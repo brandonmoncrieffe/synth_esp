@@ -1,0 +1,22 @@
+#pragma once
+
+#include <stdint.h>
+
+#include "hal/gpio_types.h"
+
+#define SYNTH_SAMPLE_RATE 48000U
+#define SYNTH_BLOCK_FRAMES 128U
+#define SYNTH_CHANNEL_COUNT 2U
+
+#define SYNTH_TEST_FREQ_HZ 440.0f
+#define SYNTH_TEST_LEVEL 0.20f
+
+#define SYNTH_PCM_BITS 24
+#define SYNTH_PCM_MAX_24 ((int32_t)0x7FFFFF)
+#define SYNTH_PCM_MIN_24 ((int32_t)-0x800000)
+#define SYNTH_I2S_SLOT_BITS 32
+#define SYNTH_I2S_24BIT_LEFT_SHIFT 8
+
+#define PCM5102_I2S_BCLK_GPIO GPIO_NUM_16
+#define PCM5102_I2S_WS_GPIO GPIO_NUM_17
+#define PCM5102_I2S_DOUT_GPIO GPIO_NUM_15
