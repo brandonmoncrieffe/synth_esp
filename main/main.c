@@ -7,7 +7,7 @@ static const char *TAG = "main";
 
 void app_main(void)
 {
-    ESP_LOGI(TAG, "Starting synth scaffold");
+    ESP_LOGI(TAG, "Starting chromatic MIDI/button synth");
     ESP_LOGI(TAG,
              "Audio target: %u Hz, %u-bit PCM in %u-bit I2S slots",
              (unsigned)SYNTH_SAMPLE_RATE,

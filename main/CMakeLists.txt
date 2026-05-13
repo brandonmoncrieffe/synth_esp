@@ -2,6 +2,7 @@ idf_component_register(
     SRCS
         "main.c"
         "audio/audio_driver.c"
+        "input/button_input.c"
         "synth/synth_engine.c"
         "synth/oscillator.c"
         "synth/voice.c"
@@ -10,5 +11,5 @@ idf_component_register(
         "midi/midi_parser.c"
         "midi/midi_uart.c"
     INCLUDE_DIRS "."
-    PRIV_REQUIRES esp_driver_i2s
+    PRIV_REQUIRES esp_driver_i2s esp_driver_uart esp_driver_i2c esp_driver_gpio esp_adc
 )
