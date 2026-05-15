@@ -20,5 +20,6 @@ typedef struct {
 void envelope_init(envelope_t *env, float sample_rate);
 void envelope_note_on(envelope_t *env);
 void envelope_note_off(envelope_t *env);
+void envelope_reset(envelope_t *env);
 float envelope_render(envelope_t *env);
 bool envelope_is_active(const envelope_t *env);

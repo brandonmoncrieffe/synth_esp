@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -11,6 +12,7 @@
 typedef struct {
     i2c_master_bus_handle_t bus_handle;
     i2c_master_dev_handle_t device_handle;
+    bool available;
     uint16_t stable_pressed_mask;
     uint8_t debounce_counts[SYNTH_CHROMATIC_NOTE_COUNT];
 } button_input_t;
@@ -18,3 +20,4 @@ typedef struct {
 esp_err_t button_input_init(button_input_t *input);
 void button_input_reset(button_input_t *input);
 esp_err_t button_input_poll(button_input_t *input, midi_event_t *events, size_t max_events, size_t *event_count);
+esp_err_t button_input_read_debug_masks(button_input_t *input, uint16_t *raw_mask, uint16_t *pressed_mask);

@@ -22,6 +22,11 @@ void oscillator_set_frequency(oscillator_t *osc, float frequency_hz)
     osc->phase_increment = oscillator_phase_increment(frequency_hz, osc->sample_rate);
 }
 
+void oscillator_reset_phase(oscillator_t *osc)
+{
+    osc->phase = 0.0f;
+}
+
 float oscillator_render_sine(oscillator_t *osc)
 {
     float sample = sinf(osc->phase * OSC_TWO_PI);

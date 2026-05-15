@@ -9,4 +9,5 @@ typedef struct {
 
 void oscillator_init(oscillator_t *osc, float sample_rate, float frequency_hz);
 void oscillator_set_frequency(oscillator_t *osc, float frequency_hz);
+void oscillator_reset_phase(oscillator_t *osc);
 float oscillator_render_sine(oscillator_t *osc);

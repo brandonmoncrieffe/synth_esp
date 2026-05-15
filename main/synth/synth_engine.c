@@ -81,14 +81,20 @@ void synth_engine_note_on(synth_engine_t *engine, uint8_t midi_note, uint8_t vel
     }
 
     synth_voice_t *voice = synth_engine_find_voice_by_note(engine, midi_note);
+    bool fade_before_note_on = voice != NULL;
     if (voice == NULL) {
         voice = synth_engine_find_free_voice(engine);
     }
     if (voice == NULL) {
         voice = synth_engine_find_oldest_voice(engine);
+        fade_before_note_on = true;
     }
 
-    synth_voice_note_on(voice, midi_note, velocity, engine->next_voice_age++);
+    if (fade_before_note_on) {
+        synth_voice_queue_note_on(voice, midi_note, velocity, engine->next_voice_age++);
+    } else {
+        synth_voice_note_on(voice, midi_note, velocity, engine->next_voice_age++);
+    }
 }
 
 void synth_engine_note_off(synth_engine_t *engine, uint8_t midi_note)
@@ -121,18 +127,12 @@ void synth_engine_render_i32(synth_engine_t *engine, int32_t *stereo_frames, siz
 {
     for (size_t i = 0; i < frame_count; ++i) {
         float mono = 0.0f;
-        size_t active_voice_count = 0;
 
         for (size_t voice_index = 0; voice_index < SYNTH_MAX_VOICES; ++voice_index) {
-            if (engine->voices[voice_index].active) {
-                ++active_voice_count;
-            }
             mono += synth_voice_render(&engine->voices[voice_index]);
         }
 
-        if (active_voice_count > 0U) {
-            mono *= (SYNTH_MIX_GAIN / (float)active_voice_count) * engine->master_volume;
-        }
+        mono *= SYNTH_MIX_GAIN * engine->master_volume;
 
         int32_t sample = synth_float_to_i2s_sample(mono);
 

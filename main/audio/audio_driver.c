@@ -26,6 +26,9 @@ static button_input_t s_button_input;
 static adc_oneshot_unit_handle_t s_volume_adc_handle;
 static adc_channel_t s_volume_adc_channel;
 static float s_smoothed_volume = SYNTH_DEFAULT_MASTER_VOLUME;
+static uint32_t s_button_debug_log_counter;
+static bool s_button_input_available;
+static bool s_button_unavailable_logged;
 
 typedef enum {
     AUDIO_INPUT_MODE_MIDI = 0,
@@ -65,16 +68,45 @@ static void audio_poll_midi(void)
 
 static void audio_poll_buttons(void)
 {
+    if (!s_button_input_available) {
+        if (BUTTON_INPUT_DEBUG_LOGS && !s_button_unavailable_logged) {
+            ESP_LOGW(TAG, "Button input unavailable; skipping button polling");
+            s_button_unavailable_logged = true;
+        }
+        return;
+    }
+
     midi_event_t events[SYNTH_CHROMATIC_NOTE_COUNT];
     size_t event_count = 0;
 
+    if (BUTTON_INPUT_DEBUG_LOGS && s_button_debug_log_counter++ >= 187U) {
+        uint16_t raw_mask = 0;
+        uint16_t pressed_mask = 0;
+        esp_err_t debug_err = button_input_read_debug_masks(&s_button_input, &raw_mask, &pressed_mask);
+        if (debug_err == ESP_OK) {
+            ESP_LOGI(TAG, "Button raw=0x%04x pressed=0x%03x", raw_mask, pressed_mask);
+        } else {
+            ESP_LOGW(TAG, "Button debug read failed: %s", esp_err_to_name(debug_err));
+        }
+        s_button_debug_log_counter = 0;
+    }
+
     esp_err_t err = button_input_poll(&s_button_input, events, SYNTH_CHROMATIC_NOTE_COUNT, &event_count);
     if (err != ESP_OK) {
-        ESP_LOGW(TAG, "Button input read failed: %s", esp_err_to_name(err));
+        if (BUTTON_INPUT_DEBUG_LOGS && !s_button_unavailable_logged) {
+            ESP_LOGW(TAG, "Button input read failed: %s", esp_err_to_name(err));
+            s_button_unavailable_logged = true;
+        }
         return;
     }
 
     for (size_t i = 0; i < event_count; ++i) {
+        if (BUTTON_INPUT_DEBUG_LOGS) {
+            ESP_LOGI(TAG,
+                     "Button %s note=%u",
+                     events[i].type == MIDI_EVENT_NOTE_ON ? "on" : "off",
+                     events[i].data1);
+        }
         audio_handle_midi_event(&events[i]);
     }
 }
@@ -93,7 +125,9 @@ static void audio_set_input_mode(audio_input_mode_t next_mode)
 
     synth_engine_all_notes_off(&s_engine);
     midi_parser_init(&s_midi_parser);
-    button_input_reset(&s_button_input);
+    if (s_button_input_available) {
+        button_input_reset(&s_button_input);
+    }
     esp_err_t err = midi_uart_flush_input();
     if (err != ESP_OK) {
         ESP_LOGW(TAG, "MIDI UART flush failed: %s", esp_err_to_name(err));
@@ -203,9 +237,26 @@ esp_err_t audio_driver_start(void)
     synth_engine_set_master_volume(&s_engine, SYNTH_DEFAULT_MASTER_VOLUME);
 
     ESP_RETURN_ON_ERROR(midi_uart_init(), TAG, "init MIDI UART");
-    ESP_RETURN_ON_ERROR(button_input_init(&s_button_input), TAG, "init button input");
+    esp_err_t button_err = button_input_init(&s_button_input);
+    if (button_err == ESP_OK) {
+        s_button_input_available = true;
+    } else {
+        s_button_input_available = false;
+        ESP_LOGW(TAG, "Button input unavailable: %s; continuing without buttons", esp_err_to_name(button_err));
+    }
     ESP_RETURN_ON_ERROR(audio_input_mode_switch_init(), TAG, "init input mode switch");
-    ESP_RETURN_ON_ERROR(audio_volume_control_init(), TAG, "init volume ADC");
+    if (s_input_mode == AUDIO_INPUT_MODE_BUTTONS && !s_button_input_available) {
+        ESP_LOGW(TAG, "Button mode selected but MCP23017 is unavailable; no button notes will play");
+    }
+    ESP_LOGI(TAG, "Input mode switch GPIO=%d level=%d mode=%s",
+             INPUT_MODE_SWITCH_GPIO,
+             gpio_get_level(INPUT_MODE_SWITCH_GPIO),
+             s_input_mode == AUDIO_INPUT_MODE_BUTTONS ? "buttons" : "midi");
+    if (VOLUME_POT_ENABLED) {
+        ESP_RETURN_ON_ERROR(audio_volume_control_init(), TAG, "init volume ADC");
+    } else {
+        ESP_LOGI(TAG, "Volume pot disabled; using default master volume");
+    }
 
     i2s_chan_config_t chan_cfg = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_AUTO, I2S_ROLE_MASTER);
     chan_cfg.dma_desc_num = 6;

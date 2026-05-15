@@ -22,6 +22,7 @@ void envelope_init(envelope_t *env, float sample_rate)
 
 void envelope_note_on(envelope_t *env)
 {
+    env->value = 0.0f;
     env->stage = ENVELOPE_STAGE_ATTACK;
 }
 
@@ -30,6 +31,12 @@ void envelope_note_off(envelope_t *env)
     if (env->stage != ENVELOPE_STAGE_IDLE) {
         env->stage = ENVELOPE_STAGE_RELEASE;
     }
+}
+
+void envelope_reset(envelope_t *env)
+{
+    env->stage = ENVELOPE_STAGE_IDLE;
+    env->value = 0.0f;
 }
 
 float envelope_render(envelope_t *env)
